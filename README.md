@@ -1,4 +1,4 @@
 # homebridge-raspberrypi-info
 based on YinHang's RaspberryPI temperature plugin and simont77's FakeGatoHistory plugin for homebridge
 with more info
-homebridge-raspberrypi-info/screenshot.png
+<img src=homebridge-raspberrypi-info/screenshot.png>
