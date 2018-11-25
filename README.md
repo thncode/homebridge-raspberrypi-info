@@ -1,5 +1,7 @@
 # homebridge-raspberrypi-info
 
+Forked from YinHangCode/homebridge-raspberrypi-temperature
+
 based on YinHang's RaspberryPI temperature plugin and simont77's FakeGatoHistory plugin for homebridge
 with more info
 
