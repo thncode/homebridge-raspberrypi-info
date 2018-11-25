@@ -2,10 +2,11 @@ var Accessory, Service, Characteristic, UUIDGen, FakeGatoHistoryService;
 var inherits = require('util').inherits;
 const fs = require('fs');
 const packageFile = require("./package.json");
+var os = require("os");
 var hostname = os.hostname();
 
 module.exports = function(homebridge) {
-    if(!isConfig(homebridge.user.configPath(), "accessories", "RaspberryPiInformation")) {
+    if(!isConfig(homebridge.user.configPath(), "accessories", "RaspberryPiTemperature")) {
         return;
     }
     
@@ -15,8 +16,18 @@ module.exports = function(homebridge) {
     UUIDGen = homebridge.hap.uuid;
     FakeGatoHistoryService = require("fakegato-history")(homebridge);
 
-    homebridge.registerAccessory('homebridge-raspberrypi-info', 'RaspberryPiInfo', RaspberryPiInformation);
+    homebridge.registerAccessory('homebridge-raspberrypi-temperature', 'RaspberryPiTemperature', RaspberryPiTemperature);
 }
+
+function readUptime() {
+	const exec = require('child_process').exec;
+	var script = exec('uptime > /uptime.txt',
+		(error, stdout, stderr) => {
+			if (error !== null) {
+				//this.log("exec error: " + ${error});
+			}
+		});			
+};
 
 function isConfig(configFile, type, name) {
     var config = JSON.parse(fs.readFileSync(configFile));
@@ -38,9 +49,9 @@ function isConfig(configFile, type, name) {
     }
     
     return false;
-}
+};
 
-function RaspberryPiInformation(log, config) {
+function RaspberryPiTemperature(log, config) {
     if(null == config) {
         return;
     }
@@ -58,48 +69,99 @@ function RaspberryPiInformation(log, config) {
         this.updateInterval = null;
     }
   
+	this.setUpServices();
+};
+
+RaspberryPiTemperature.prototype.getUptime = function (callback) {
+	
+	var data = fs.readFileSync("/uptime.txt", "utf-8");
+	var uptime = data.substring(12, data.indexOf(",", data.indexOf(",", 0)+1));
+		
+	callback(null, uptime);
+};
+
+RaspberryPiTemperature.prototype.getAvgLoad = function (callback) {
+	
+	var data = fs.readFileSync("/uptime.txt", "utf-8");
+	var load = data.substring(data.length - 17);
+		
+	callback(null, load);
+};
+
+RaspberryPiTemperature.prototype.setUpServices = function () {
+
+	var that = this;
+	var temp;
+	
+	this.infoService = new Service.AccessoryInformation();
+	this.infoService
+		.setCharacteristic(Characteristic.Manufacturer, "RaspberryPi")
+		.setCharacteristic(Characteristic.Model, "3B")
+		.setCharacteristic(Characteristic.SerialNumber, hostname + "-" + this.name)
+		.setCharacteristic(Characteristic.FirmwareRevision, packageFile.version);
+	
+	this.fakeGatoHistoryService = new FakeGatoHistoryService("weather", this, { storage: 'fs' });
+	
+	let uuid1 = UUIDGen.generate(that.name + '-Uptime');
+	info = function (displayName, subtype) {
+		Characteristic.call(this, 'Uptime', uuid1);
+		this.setProps({
+			format: Characteristic.Formats.STRING,
+			perms: [Characteristic.Perms.READ, Characteristic.Perms.NOTIFY]
+		});
+		this.value = this.getDefaultValue();
+	};
+	inherits(info, Characteristic);
+	info.UUID = uuid1;
+
+	let uuid2 = UUIDGen.generate(that.name + '-AvgLoad');
+	load = function () {
+		Characteristic.call(this, 'Average Load', uuid2);
+		this.setProps({
+			format: Characteristic.Formats.STRING,
+			perms: [Characteristic.Perms.READ, Characteristic.Perms.NOTIFY]
+		});
+		this.value = this.getDefaultValue();
+	};
+	inherits(load, Characteristic);
+	load.UUID = uuid2;
+	
+	this.raspberrypiService = new Service.TemperatureSensor(that.name);
+	var currentTemperatureCharacteristic = this.raspberrypiService.getCharacteristic(Characteristic.CurrentTemperature);
+	this.raspberrypiService.getCharacteristic(info)
+		.on('get', this.getUptime.bind(this));
+	this.raspberrypiService.getCharacteristic(load)
+		.on('get', this.getAvgLoad.bind(this));
+	
+	function getCurrentTemperature() {
+		var data = fs.readFileSync(that.readFile, "utf-8");
+		var temperatureVal = parseFloat(data) / 1000;
+		temp = temperatureVal;
+		that.log.debug("update currentTemperatureCharacteristic value: " + temperatureVal);
+		return temperatureVal;
+	}
+	
+	readUptime();
+	
+	currentTemperatureCharacteristic.updateValue(getCurrentTemperature());
+	if(that.updateInterval) {
+		setInterval(() => {
+			currentTemperatureCharacteristic.updateValue(getCurrentTemperature());
+			
+			that.log("Raspberry Temperatur: " + temp);
+			this.fakeGatoHistoryService.addEntry({time: new Date().getTime() / 1000, temp: temp});
+			
+			readUptime();
+			
+		}, that.updateInterval);
+	}
+	
+	currentTemperatureCharacteristic.on('get', (callback) => {
+		callback(null, getCurrentTemperature());
+	});
 }
 
-RaspberryPiInformation.prototype = {
-    getServices: function() {
-        var that = this;
-        var temp;
-        
-        var infoService = new Service.AccessoryInformation();
-        infoService
-            .setCharacteristic(Characteristic.Manufacturer, "RaspberryPi")
-            .setCharacteristic(Characteristic.Model, "3B")
-            .setCharacteristic(Characteristic.SerialNumber, "Undefined")
-            .setCharacteristic(Characteristic.FirmwareRevision, packageFile.version);
-        
-        this.fakeGatoHistoryService = new FakeGatoHistoryService("weather", this, { storage: 'fs' });
-        
-        var raspberrypiService = new Service.TemperatureSensor(that.name);
-        var currentTemperatureCharacteristic = raspberrypiService.getCharacteristic(Characteristic.CurrentTemperature);
-        function getCurrentTemperature() {
-            var data = fs.readFileSync(that.readFile, "utf-8");
-            var temperatureVal = parseFloat(data) / 1000;
-            temp = temperatureVal;
-            that.log.debug("update currentTemperatureCharacteristic value: " + temperatureVal);
-            return temperatureVal;
-        }
-        currentTemperatureCharacteristic.updateValue(getCurrentTemperature());
-        if(that.updateInterval) {
-            setInterval(() => {
-                currentTemperatureCharacteristic.updateValue(getCurrentTemperature());
+RaspberryPiTemperature.prototype.getServices = function () {
 
-                that.fakeGatoHistoryService.addEntry({
-                                time: new Date().getTime() / 1000,
-                                temp: temp
-                                });
-                
-            }, that.updateInterval);
-        }
-        currentTemperatureCharacteristic.on('get', (callback) => {
-            callback(null, getCurrentTemperature());
-        });
-        
-        return [infoService, raspberrypiService];
-    }
-}
-
+	return [this.infoService, this.fakeGatoHistoryService, this.raspberrypiService];
+};
