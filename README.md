@@ -12,10 +12,11 @@ with more info
 "accessories": [{
     "accessory": "RaspberryPiTemperature",
     "name": "RaspberryPi Info",
-    "updateInterval": 1000
+    "updateInterval": 60000
 }]
 ```
 
 ## Credits
 
 * simont77 - fakegato-history
+* YinHangCode - homebridge-raspberrypi-temperature
