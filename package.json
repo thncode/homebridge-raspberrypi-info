@@ -1,6 +1,6 @@
 {
   "name": "homebridge-raspberrypi-info",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "a homebridge(https://github.com/nfarina/homebridge) plugin that get RaspberryPi information.",
   "keywords": [
     "homebridge-plugin",
@@ -21,7 +21,7 @@
     "node": ">=0.12.0",
     "homebridge": ">=0.4.1"
   },
-  "dependencies" :{
+  "dependencies": {
     "fakegato-history": "^0.4.0",
     "request": "^2.65.0"
   }
