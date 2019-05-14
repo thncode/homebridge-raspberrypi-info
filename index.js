@@ -21,7 +21,7 @@ module.exports = function(homebridge) {
 
 function readUptime() {
 	const exec = require('child_process').exec;
-	var script = exec('uptime > /uptime.txt',
+	var script = exec('uptime > /tmp/uptime.txt',
 		(error, stdout, stderr) => {
 			if (error !== null) {
 				//this.log("exec error: " + ${error});
@@ -74,7 +74,7 @@ function RaspberryPiTemperature(log, config) {
 
 RaspberryPiTemperature.prototype.getUptime = function (callback) {
 	
-	var data = fs.readFileSync("/uptime.txt", "utf-8");
+	var data = fs.readFileSync("/tmp/uptime.txt", "utf-8");
 	var uptime = data.substring(12, data.indexOf(",", data.indexOf(",", 0)+1));
 		
 	callback(null, uptime);
@@ -82,7 +82,7 @@ RaspberryPiTemperature.prototype.getUptime = function (callback) {
 
 RaspberryPiTemperature.prototype.getAvgLoad = function (callback) {
 	
-	var data = fs.readFileSync("/uptime.txt", "utf-8");
+	var data = fs.readFileSync("/tmp/uptime.txt", "utf-8");
 	var load = data.substring(data.length - 17);
 		
 	callback(null, load);
@@ -137,7 +137,7 @@ RaspberryPiTemperature.prototype.setUpServices = function () {
 		var data = fs.readFileSync(that.readFile, "utf-8");
 		var temperatureVal = parseFloat(data) / 1000;
 		temp = temperatureVal;
-		that.log.debug("update currentTemperatureCharacteristic value: " + temperatureVal);
+
 		return temperatureVal;
 	}
 	
