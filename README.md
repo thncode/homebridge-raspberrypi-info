@@ -8,7 +8,7 @@ with more info
 ## Configuration
 ```
 "accessories": [{
-    "accessory": "RaspberryPiTemperature",
+    "accessory": "RaspberryPiInfo",
     "name": "RaspberryPi Info",
     "updateInterval": 60000
 }]
